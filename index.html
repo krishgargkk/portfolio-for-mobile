@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Krish Garg | Cinematic Video Editor</title>
+
+    <!-- Core Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Outfit', 'sans-serif'] },
+                    colors: {
+                        noir: { bg: '#050505', surface: '#0E0E0E', soft: '#151515' },
+                        accent: '#E11D48',
+                        cyan: '#06b6d4',
+                        magenta: '#d946ef',
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'float-delayed': 'float 6s ease-in-out 3s infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0) rotate(0deg)' },
+                            '50%': { transform: 'translateY(-20px) rotate(5deg)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #050505;
+            color: #ffffff;
+            overflow-x: hidden;
+            width: 100%;
+        }
+
+        #canvas3d {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: -1;
+            opacity: 0.25;
+            pointer-events: none;
+            filter: blur(0.5px);
+        }
+
+        .text-gradient-main {
+            background: linear-gradient(to right, #E11D48, #d946ef);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .text-gradient-cyan {
+            background: linear-gradient(to right, #06b6d4, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card {
+            background: rgba(15, 15, 15, 0.6);
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 20px;
+            transition: all .4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(12px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        @media (min-width: 768px) {
+            .card:hover {
+                border-color: rgba(225, 29, 72, 0.6);
+                transform: translateY(-10px) scale(1.02);
+                box-shadow: 0 20px 40px -10px rgba(225, 29, 72, 0.2);
+            }
+        }
+
+        .portfolio-tab {
+            padding: 12px 28px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, .1);
+            font-weight: 700;
+            color: #aaa;
+            background: rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .portfolio-tab.active {
+            background: linear-gradient(135deg, #E11D48 0%, #be123c 100%);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 0 20px rgba(225, 29, 72, 0.4);
+        }
+
+        .graphic-icon {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            z-index: 20;
+        }
+
+        /* Essential for Mobile Scrolling */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .skill {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 6px 14px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            color: #ddd;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body class="font-sans antialiased selection:bg-cyan-500 selection:text-black">
+
+    <canvas id="canvas3d"></canvas>
+
+    <!-- NAV -->
+    <nav class="fixed w-full z-50 bg-black/50 backdrop-blur-xl border-b border-white/5 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-6 h-24 flex justify-between items-center">
+            <h1 class="text-3xl font-extrabold tracking-tighter cursor-pointer group"
+                onclick="window.scrollTo({top:0, behavior:'smooth'})">
+                <i class="fa-solid fa-scissors text-accent mr-2 group-hover:rotate-180 transition duration-700"></i>
+                <span class="text-white">krish</span><span class="text-gradient-main">garg.</span>
+            </h1>
+
+            <!-- Desktop Menu -->
+            <div class="hidden md:flex gap-8 text-gray-300 font-medium items-center">
+                <a href="#work" class="hover:text-cyan-400 transition">Work</a>
+                <a href="#services" class="hover:text-magenta transition">Services</a>
+                <a href="#about" class="hover:text-white transition">About</a>
+                <a href="#contact"
+                    class="bg-gradient-to-r from-accent to-magenta text-white px-8 py-3 rounded-xl font-bold hover:shadow-[0_0_20px_rgba(217,70,239,0.5)] transition transform hover:-translate-y-1">
+                    Let's Talk
+                </a>
+            </div>
+            <!-- Mobile CTA -->
+            <a href="#contact"
+                class="md:hidden bg-accent text-white px-4 py-2 rounded-lg text-xs font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)]">
+                Hire Me
+            </a>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="min-h-screen flex items-center pt-32 pb-20 relative overflow-hidden">
+        <!-- Background Ambient Blobs -->
+        <div
+            class="absolute top-[-10%] right-[-10%] w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-cyan-600/20 blur-[100px] md:blur-[120px] rounded-full pointer-events-none">
+        </div>
+        <div
+            class="absolute bottom-[-10%] left-[-10%] w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-accent/20 blur-[100px] md:blur-[120px] rounded-full pointer-events-none">
+        </div>
+
+        <div class="max-w-7xl mx-auto px-6 relative z-10 w-full">
+            <!-- 
+               LAYOUT SWITCHING:
+               Mobile: flex-col-reverse (Text bottom, Image top)
+               Desktop: flex-row (Text left, Image right)
+            -->
+            <div class="flex flex-col-reverse lg:flex-row items-center justify-between gap-16 lg:gap-8">
+
+                <!-- Text Content -->
+                <div class="w-full lg:w-1/2 text-center lg:text-left z-20">
+                    <div
+                        class="inline-flex items-center gap-3 px-5 py-2 rounded-2xl border border-cyan-500/30 bg-cyan-950/30 mb-8 backdrop-blur-md">
+                        <span class="relative flex h-3 w-3">
+                            <span
+                                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                        </span>
+                        <span class="text-cyan-300 text-sm font-bold tracking-wider uppercase">name = krish garg</span>
+                    </div>
+
+                    <h1 class="text-6xl md:text-7xl lg:text-8xl font-black mb-6 tracking-tighter leading-[0.95]">
+                        Impact<br>
+                        <span class="text-gradient-main">Editing</span>
+                    </h1>
+
+                    <p class="text-gray-400 text-lg md:text-xl max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
+                        I turn raw footage into gold. Specializing in high-energy commercials, music videos, and viral
+                        social content that demands attention.
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row gap-5 justify-center lg:justify-start">
+                        <a href="#work"
+                            class="group relative px-8 py-4 bg-white text-black rounded-xl font-bold overflow-hidden transition hover:scale-105">
+                            <div
+                                class="absolute inset-0 w-full h-full bg-gradient-to-r from-cyan-400 to-blue-500 opacity-0 group-hover:opacity-100 transition duration-300">
+                            </div>
+                            <span class="relative z-10 flex items-center gap-3 group-hover:text-white transition">
+                                <i class="fa-solid fa-circle-play text-xl"></i> Watch Showreel
+                            </span>
+                        </a>
+                        <a href="#contact"
+                            class="px-8 py-4 rounded-xl font-bold border border-white/20 hover:bg-white/10 transition backdrop-blur-md text-white flex items-center justify-center gap-2">
+                            Start Project <i
+                                class="fa-solid fa-arrow-right -rotate-45 group-hover:rotate-0 transition"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Profile Image Space -->
+                <!-- Mobile: h-[480px] centered. Desktop: Auto height. -->
+                <div class="w-full lg:w-1/2 relative flex justify-center items-end h-[480px] md:h-[600px] lg:h-[720px]">
+
+                    <!-- Floating Graphic Elements (From Mobile Design) -->
+                    <div class="graphic-icon top-10 md:top-20 right-0 w-16 h-16 animate-float">
+                        <i class="fa-solid fa-film text-2xl text-cyan-400"></i>
+                    </div>
+                    <div class="graphic-icon bottom-1/3 left-0 w-16 h-12 md:w-20 md:h-14 animate-float-delayed">
+                        <i class="fa-solid fa-wave-square text-xl md:text-2xl text-magenta"></i>
+                    </div>
+                    <!-- REC Button (Specific to your mobile design) -->
+                    <div class="graphic-icon bottom-20 right-10 w-24 h-12 animate-float-delayed"
+                        style="animation-delay: 0.5s;">
+                        <div class="flex gap-2 items-center text-xs font-bold text-gray-300">
+                            <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div> REC
+                        </div>
+                    </div>
+
+                    <!-- Main Image -->
+                    <div
+                        class="absolute bottom-0 w-full h-[60%] bg-gradient-to-t from-accent/20 to-transparent blur-[60px] rounded-t-[100px] pointer-events-none">
+                    </div>
+                    <img src="gffgdfgdfgdfgdfgdfdfg.webp" alt="Editor Profile"
+                        class="relative z-10 h-full max-h-full scale-90 lg:scale-95 object-contain drop-shadow-[0_20px_50px_rgba(225,29,72,0.3)]">
+                    <div
+                        class="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-[#050505] to-transparent z-20 pointer-events-none">
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- PORTFOLIO SECTION -->
+    <section id="work" class="py-20 md:py-32 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+                <div>
+                    <h2 class="text-5xl md:text-6xl font-black mb-2 uppercase tracking-tight">Selected <span
+                            class="text-gradient-cyan">Work</span></h2>
+                    <p class="text-gray-400">Hover (Desktop) or Tap (Mobile) to preview.</p>
+                </div>
+
+                <div class="flex bg-white/5 p-1 rounded-2xl backdrop-blur-md border border-white/10 w-full md:w-auto">
+                    <button onclick="switchTab('shorts')" id="tab-shorts"
+                        class="portfolio-tab active flex-1 md:flex-none">Short Form</button>
+                    <button onclick="switchTab('longs')" id="tab-longs" class="portfolio-tab flex-1 md:flex-none">Long
+                        Form</button>
+                </div>
+            </div>
+
+            <!-- SHORTS CONTAINER -->
+            <!-- 
+                LAYOUT SWITCHING:
+                Mobile: flex overflow-x-auto snap-x (Horizontal Scroll)
+                Desktop: md:grid md:grid-cols-3 (Grid Layout)
+            -->
+            <div id="shorts-container" class="animate-fade-in">
+                <div
+                    class="flex md:grid md:grid-cols-3 gap-8 overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-12 hide-scrollbar px-4 md:px-0">
+
+                    <!-- CARD 1 -->
+                    <!-- Mobile width: 85vw. Desktop width: auto. -->
+                    <div
+                        class="card min-w-[300px] w-[85vw] md:w-auto md:min-w-0 snap-center flex-shrink-0 flex flex-col group cursor-pointer border-t-4 border-t-accent video-wrapper">
+                        <div class="relative aspect-[9/16] overflow-hidden bg-gray-900">
+                            <img src="hulk pic project.jpg"
+                                class="w-full h-full object-cover opacity-80 group-hover:scale-110 transition duration-700">
+                            <video muted loop playsinline
+                                class="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition duration-300">
+                                <source src="Video-141.mp4" type="video/mp4">
+                            </video>
+                            <div
+                                class="absolute top-4 left-4 bg-black/60 backdrop-blur px-3 py-1 rounded-lg text-xs font-bold border border-white/10 text-white flex items-center gap-2">
+                                <i class="fa-brands fa-instagram text-accent"></i> Reel
+                            </div>
+                            <button onclick="toggleMute(event, this)"
+                                class="absolute bottom-4 right-4 bg-white/10 hover:bg-accent backdrop-blur w-10 h-10 rounded-full flex items-center justify-center text-white border border-white/10 transition z-20 md:opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0">
+                                <i class="fa-solid fa-volume-xmark"></i>
+                            </button>
+                        </div>
+                        <div class="p-6 flex flex-col flex-grow bg-gradient-to-b from-transparent to-black/80">
+                            <h3 class="font-bold text-xl text-white group-hover:text-accent transition mb-1">COACHING AD
+                            </h3>
+                            <p class="text-xs text-gray-400 italic mb-4">"Created using Premiere Pro, AE & AI"</p>
+                            <div class="mt-auto flex gap-2">
+                                <span class="skill text-[10px]">Premiere</span>
+                                <span class="skill text-[10px]">After Effects</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARD 2 -->
+                    <div
+                        class="card min-w-[300px] w-[85vw] md:w-auto md:min-w-0 snap-center flex-shrink-0 flex flex-col group cursor-pointer border-t-4 border-t-cyan-400 video-wrapper">
+                        <div class="relative aspect-[9/16] overflow-hidden bg-gray-900">
+                            <img src="kides louncher school image.jpg"
+                                class="w-full h-full object-cover opacity-80 group-hover:scale-110 transition duration-700">
+                            <video muted loop playsinline
+                                class="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition duration-300">
+                                <source src="kides louncher without sub (1).mp4" type="video/mp4">
+                            </video>
+                            <div
+                                class="absolute top-4 left-4 bg-black/60 backdrop-blur px-3 py-1 rounded-lg text-xs font-bold border border-white/10 text-white flex items-center gap-2">
+                                <i class="fa-solid fa-play text-cyan-400"></i> Promo
+                            </div>
+                            <button onclick="toggleMute(event, this)"
+                                class="absolute bottom-4 right-4 bg-white/10 hover:bg-cyan-500 backdrop-blur w-10 h-10 rounded-full flex items-center justify-center text-white border border-white/10 transition z-20 md:opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0">
+                                <i class="fa-solid fa-volume-xmark"></i>
+                            </button>
+                        </div>
+                        <div class="p-6 flex flex-col flex-grow bg-gradient-to-b from-transparent to-black/80">
+                            <h3 class="font-bold text-xl text-white group-hover:text-cyan-400 transition mb-1">SCHOOL
+                                PROMO</h3>
+                            <p class="text-xs text-gray-400 italic mb-4">"Client wanted something animated"</p>
+                            <div class="mt-auto flex gap-2">
+                                <span class="skill text-[10px]">Premiere</span>
+                                <span class="skill text-[10px]">AI</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARD 3 -->
+                    <div
+                        class="card min-w-[300px] w-[85vw] md:w-auto md:min-w-0 snap-center flex-shrink-0 flex flex-col group cursor-pointer border-t-4 border-t-magenta video-wrapper">
+                        <div class="relative aspect-[9/16] overflow-hidden bg-gray-900">
+                            <img src="darao or sol.jpg"
+                                class="w-full h-full object-cover opacity-80 group-hover:scale-110 transition duration-700">
+                            <video muted loop playsinline
+                                class="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition duration-300">
+                                <source src="final beforee and after clip podcast edit (1).mp4" type="video/mp4">
+                            </video>
+                            <div
+                                class="absolute top-4 left-4 bg-black/60 backdrop-blur px-3 py-1 rounded-lg text-xs font-bold border border-white/10 text-white flex items-center gap-2">
+                                <i class="fa-brands fa-youtube text-magenta"></i> Shorts
+                            </div>
+                            <button onclick="toggleMute(event, this)"
+                                class="absolute bottom-4 right-4 bg-white/10 hover:bg-magenta backdrop-blur w-10 h-10 rounded-full flex items-center justify-center text-white border border-white/10 transition z-20 md:opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0">
+                                <i class="fa-solid fa-volume-xmark"></i>
+                            </button>
+                        </div>
+                        <div class="p-6 flex flex-col flex-grow bg-gradient-to-b from-transparent to-black/80">
+                            <h3 class="font-bold text-xl text-white group-hover:text-magenta transition mb-1">PODCAST
+                                SHORT</h3>
+                            <p class="text-xs text-gray-400 italic mb-4">"Improved colors and engagement"</p>
+                            <div class="mt-auto flex gap-2">
+                                <span class="skill text-[10px]">DaVinci</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- LONG FORM CONTAINER (Hidden by default) -->
+            <div id="longs-container" class="hidden animate-fade-in">
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="card overflow-hidden group relative border-b-4 border-b-accent video-wrapper">
+                        <div class="relative aspect-video bg-gray-800">
+                            <img src="reed hasting png.jpg"
+                                class="w-full h-full object-cover opacity-80 group-hover:opacity-0 transition duration-500">
+                            <video muted loop playsinline
+                                class="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition duration-500">
+                                <source src="youtube video first fr_3_1 (1) (1).mp4" type="video/mp4">
+                            </video>
+                            <button onclick="toggleMute(event, this)"
+                                class="absolute bottom-4 right-4 bg-black/60 hover:bg-accent backdrop-blur w-10 h-10 rounded-full flex items-center justify-center text-white border border-white/10 transition z-20 md:opacity-0 group-hover:opacity-100">
+                                <i class="fa-solid fa-volume-xmark"></i>
+                            </button>
+                        </div>
+                        <div class="p-6">
+                            <h3 class="font-bold text-2xl mb-2 text-gradient-main">Cinematic Documentary first 2 minutes
+                            </h3>
+                            <p class="text-gray-400 text-sm">small documentry on netflix in which explane origin of
+                                netflix.</p>
+                        </div>
+                    </div>
+
+                    <div class="card overflow-hidden group relative border-b-4 border-b-cyan-400 video-wrapper">
+                        <div class="relative aspect-video bg-gray-800">
+                            <img src="hand shak.jpg"
+                                class="w-full h-full object-cover opacity-80 group-hover:opacity-0 transition duration-500">
+                            <video muted loop playsinline
+                                class="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition duration-500">
+                                <source src="youtube video first fr_3_2 (1) (1).mp4" type="video/mp4">
+                            </video>
+                            <button onclick="toggleMute(event, this)"
+                                class="absolute bottom-4 right-4 bg-black/60 hover:bg-cyan-500 backdrop-blur w-10 h-10 rounded-full flex items-center justify-center text-white border border-white/10 transition z-20 md:opacity-0 group-hover:opacity-100">
+                                <i class="fa-solid fa-volume-xmark"></i>
+                            </button>
+                        </div>
+                        <div class="p-6">
+                            <h3 class="font-bold text-2xl mb-2 text-gradient-cyan">Cinematic Documentary secound 2
+                                minutes</h3>
+                            <p class="text-gray-400 text-sm">small documentry on netflix in which explane origin of
+                                netflix.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SERVICES -->
+    <section id="services" class="py-24 border-t border-white/5 relative z-10">
+        <div class="max-w-7xl mx-auto px-6">
+            <h2 class="text-3xl font-black text-center mb-16">Expert Services</h2>
+            <div class="grid md:grid-cols-3 gap-10">
+                <div class="card p-8 group hover:bg-white/10 transition">
+                    <i
+                        class="fa-solid fa-film text-3xl text-accent mb-4 group-hover:scale-110 transition duration-300 inline-block"></i>
+                    <h3 class="font-bold text-xl">Video Editing</h3>
+                    <p class="text-gray-400 mt-2 text-sm leading-relaxed">Transforming raw footage into compelling
+                        narratives with perfect pacing.</p>
+                </div>
+                <div class="card p-8 group hover:bg-white/10 transition">
+                    <i
+                        class="fa-solid fa-bolt text-3xl text-cyan-400 mb-4 group-hover:scale-110 transition duration-300 inline-block"></i>
+                    <h3 class="font-bold text-xl">Short-form Content</h3>
+                    <p class="text-gray-400 mt-2 text-sm leading-relaxed">High-retention edits optimized for Reels, and
+                        YouTube Shorts.</p>
+                </div>
+                <div class="card p-8 group hover:bg-white/10 transition">
+                    <i
+                        class="fa-solid fa-wand-magic-sparkles text-3xl text-magenta mb-4 group-hover:scale-110 transition duration-300 inline-block"></i>
+                    <h3 class="font-bold text-xl">Color & Sound</h3>
+                    <p class="text-gray-400 mt-2 text-sm leading-relaxed">Professional color grading and immersive sound
+                        design to elevate quality.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ABOUT & SKILLS -->
+    <section id="about" class="py-24 relative z-10">
+        <div class="max-w-6xl mx-auto px-6">
+            <div class="grid md:grid-cols-2 gap-16 items-center">
+                <div class="bg-black/40 backdrop-blur-xl p-8 rounded-2xl border border-white/5">
+                    <h2 class="text-4xl font-bold mb-6">Behind the Edit</h2>
+                    <p class="text-gray-400 mb-8 leading-relaxed text-lg">
+                        I am a video editor who transforms raw footage into engaging, emotionally compelling content. I
+                        believe editing goes beyond effects—it's about storytelling that connects deeply with the
+                        audience.
+                    </p>
+                    <div class="flex flex-wrap gap-3 mb-8">
+                        <span class="skill">Premiere Pro</span>
+                        <span class="skill">After Effects</span>
+                        <span class="skill">DaVinci Resolve</span>
+                        <span class="skill">AI Tools</span>
+                    </div>
+                    <ul class="space-y-4 text-gray-300 font-medium">
+                        <li class="flex items-center gap-3"><i class="fa-solid fa-check text-accent"></i> 100% Client
+                            Satisfaction</li>
+                        <li class="flex items-center gap-3"><i class="fa-solid fa-check text-accent"></i> High Retention
+                            Edits</li>
+                        <li class="flex items-center gap-3"><i class="fa-solid fa-check text-accent"></i> Fast
+                            Turnaround</li>
+                    </ul>
+                </div>
+                <div class="relative">
+                    <div class="absolute inset-0 bg-accent blur-[80px] opacity-20"></div>
+                    <img src="A PICTURE FOR ADD MY SITE.png"
+                        class="relative rounded-2xl border border-white/10 shadow-2xl rotate-3 hover:rotate-0 transition duration-500">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TESTIMONIALS -->
+    <section class="py-24 relative z-10">
+        <div class="max-w-6xl mx-auto px-6">
+            <h2 class="text-3xl font-bold text-center mb-16">What Clients Say</h2>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="testimonial">
+                    <!-- <div class="flex gap-1 text-accent mb-4"><i class="fa-solid fa-star"></i><i
+                            class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i
+                            class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+                    <p class="text-gray-300 italic mb-6">"My viewer retention doubled after working with him. The edits
+                        are snappy and engaging."</p>
+                    <b class="text-white">YouTube Creator</b> -->
+                </div>
+                <div class="testimonial">
+                    <div class="flex gap-1 text-accent mb-4"><i class="fa-solid fa-star"></i><i
+                            class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i
+                            class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+                    <p class="text-gray-300 italic mb-6">"Incredible attention to detail. The color grading took our
+                        footage to the next level."</p>
+                    <b class="text-white">Agency Owner</b>
+                </div>
+                <!-- <div class="testimonial">
+                    <div class="flex gap-1 text-accent mb-4"><i class="fa-solid fa-star"></i><i
+                            class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i
+                            class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+                    <p class="text-gray-300 italic mb-6">"Fast turnaround times and great communication. The best editor
+                        I've hired."</p>
+                    <b class="text-white">Agency Owner</b> -->
+            </div>
+        </div>
+        </div>
+    </section>
+
+    <!-- CONTACT SECTION -->
+    <section id="contact" class="py-32 text-center relative overflow-hidden z-10">
+        <!-- Dynamic Gradient Background -->
+        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none"></div>
+        <div class="relative z-10 px-4 max-w-6xl mx-auto">
+            <h2 class="text-5xl md:text-7xl font-black mb-8">LET'S CREATE <br> <span
+                    class="text-gradient-main">MAGIC</span></h2>
+            <p class="text-gray-400 mb-10 text-xl">Ready to take your content to the next level?</p>
+
+            <a href="https://wa.me/919571050663"
+                class="inline-block bg-white text-black px-14 py-5 rounded-full font-black text-lg hover:scale-105 transition shadow-[0_0_40px_rgba(255,255,255,0.3)] mb-12">
+                Start a Project
+            </a>
+
+            <!-- CONTACT DETAILS -->
+            <div
+                class="grid md:grid-cols-2 gap-10 text-left mt-12 bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-md">
+                <div>
+                    <h3 class="text-2xl font-bold mb-6 text-white">Contact Info</h3>
+                    <div class="space-y-4">
+                        <a href="https://t.me/Krishgargqqq" target="_blank"
+                            class="flex items-center gap-4 text-gray-300 hover:text-cyan-400 transition group">
+                            <div
+                                class="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:bg-cyan-500 group-hover:text-white transition">
+                                <i class="fa-brands fa-telegram text-xl"></i>
+                            </div>
+                            <span>Telegram: @Krishgargqqq</span>
+                        </a>
+                        <a href="https://wa.me/919571050663" target="_blank"
+                            class="flex items-center gap-4 text-gray-300 hover:text-green-400 transition group">
+                            <div
+                                class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 group-hover:bg-green-500 group-hover:text-white transition">
+                                <i class="fa-brands fa-whatsapp text-xl"></i>
+                            </div>
+                            <span>WhatsApp: +91 95710 50663</span>
+                        </a>
+                        <a href="mailto:onlykrishgarg@gmail.com"
+                            class="flex items-center gap-4 text-gray-300 hover:text-red-400 transition group">
+                            <div
+                                class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 group-hover:bg-red-500 group-hover:text-white transition">
+                                <i class="fa-solid fa-envelope text-xl"></i>
+                            </div>
+                            <span class="truncate">onlykrishgarg@gmail.com</span>
+
+                            <div class="flex items-center gap-4 text-gray-300 group">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white">
+                                    <i class="fa-solid fa-phone text-xl"></i>
+                                </div>
+                                <span>Phone: +9571050663</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="border-t md:border-t-0 md:border-l border-white/10 pt-8 md:pt-0 md:pl-10">
+                    <h3 class="text-2xl font-bold mb-6 text-white flex items-center gap-2">
+                        See More Work <i class="fa-solid fa-arrow-right -rotate-45 text-accent"></i>
+                    </h3>
+                    <div class="flex flex-wrap gap-4">
+                        <a href="#"
+                            class="flex items-center gap-2 bg-red-600/20 border border-red-600/50 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition"><i
+                                class="fa-brands fa-youtube"></i> YouTube</a>
+                        <a href="#"
+                            class="flex items-center gap-2 bg-pink-600/20 border border-pink-600/50 hover:bg-pink-600 text-white px-4 py-2 rounded-lg transition"><i
+                                class="fa-brands fa-instagram"></i> Instagram</a>
+                        <a href="https://drive.google.com/drive/folders/1kSyzbgK9ZfkFp7RKjHvuqenN8tfct6P_?usp=drive_link"
+                            class="flex items-center gap-2 bg-blue-600/20 border border-blue-600/50 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition"><i
+                                class="fa-brands fa-google-drive"></i> Drive</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="py-8 text-center text-gray-600 text-sm border-t border-white/5 bg-black relative z-10">
+        <p>&copy; 2024 Krish Garg Portfolio. All rights reserved.</p>
+    </footer>
+
+    <!-- SCRIPTS -->
+    <script>
+        // --- 3D Background Logic ---
+        const init3D = () => {
+            const canvas = document.getElementById('canvas3d');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+
+            // Optimize for mobile (lower pixel ratio)
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+            const group = new THREE.Group();
+            scene.add(group);
+
+            const sphere = new THREE.Mesh(
+                new THREE.IcosahedronGeometry(10, 1),
+                new THREE.MeshBasicMaterial({ color: 0x333333, wireframe: true, transparent: true, opacity: 0.1 })
+            );
+            group.add(sphere);
+
+            // Fewer particles on mobile for performance
+            const isMobile = window.innerWidth < 768;
+            const count = isMobile ? 12 : 25;
+            const screensGeometry = new THREE.BoxGeometry(2, 1.1, 0.05);
+
+            for (let i = 0; i < count; i++) {
+                const screen = new THREE.Mesh(
+                    screensGeometry,
+                    new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xE11D48 : 0x06b6d4, wireframe: true, transparent: true, opacity: 0.15 })
+                );
+                const phi = Math.random() * Math.PI * 2;
+                const theta = Math.random() * Math.PI;
+                const radius = 10 + Math.random() * 8;
+                screen.position.x = radius * Math.sin(theta) * Math.cos(phi);
+                screen.position.y = radius * Math.sin(theta) * Math.sin(phi);
+                screen.position.z = radius * Math.cos(theta);
+                screen.lookAt(0, 0, 0);
+                group.add(screen);
+            }
+
+            camera.position.z = 25;
+
+            // Scroll Animation
+            gsap.registerPlugin(ScrollTrigger);
+            gsap.to(group.rotation, {
+                scrollTrigger: { trigger: "body", start: "top top", end: "bottom bottom", scrub: 1 },
+                x: Math.PI / 2, y: Math.PI, ease: "none"
+            });
+
+            const animate = () => {
+                group.rotation.y += 0.0015;
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            };
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        };
+
+        // --- Interaction Logic ---
+        function switchTab(tabName) {
+            document.getElementById('shorts-container').classList.add('hidden');
+            document.getElementById('longs-container').classList.add('hidden');
+            document.querySelectorAll('.portfolio-tab').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabName + '-container').classList.remove('hidden');
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+
+        function setupVideoInteractions() {
+            document.querySelectorAll('.video-wrapper').forEach(wrapper => {
+                const video = wrapper.querySelector('video');
+                const img = wrapper.querySelector('img');
+
+                const play = () => { img.style.opacity = '0'; video.style.opacity = '1'; video.play().catch(() => { }); };
+                const pause = () => { img.style.opacity = '0.8'; video.style.opacity = '0'; video.pause(); video.currentTime = 0; };
+
+                // Desktop Hover
+                wrapper.addEventListener('mouseenter', play);
+                wrapper.addEventListener('mouseleave', pause);
+
+                // Mobile Touch (Toggle)
+                wrapper.addEventListener('touchstart', (e) => {
+                    if (video.paused) {
+                        // Stop others
+                        document.querySelectorAll('video').forEach(v => {
+                            if (v !== video) { v.pause(); v.style.opacity = '0'; v.parentElement.querySelector('img').style.opacity = '0.8'; }
+                        });
+                        play();
+                    } else {
+                        pause();
+                    }
+                }, { passive: true });
+            });
+        }
+
+        function toggleMute(event, btn) {
+            event.stopPropagation();
+            event.preventDefault();
+            const video = btn.parentElement.querySelector('video');
+            const icon = btn.querySelector('i');
+            if (video) {
+                video.muted = !video.muted;
+                icon.className = video.muted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
+            }
+        }
+
+        window.onload = () => {
+            init3D();
+            setupVideoInteractions();
+        };
+    </script>
+</body>
+
+</html>
